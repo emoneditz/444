@@ -140,12 +140,13 @@
 
             // Password Check (Case Insensitive)
             if (val.toLowerCase() === 'yasi') {
-                // Correct Password: Redirect to chat
+                // SECURITY: Set session flag so they can enter Chat.html
+                sessionStorage.setItem('accessGranted', 'true');
                 window.location.href = 'chat.html';
             } else {
                 // Wrong Password: Fake Success
                 showFakeNotification();
-                inputField.value = ''; // Clear input
+                inputField.value = ''; 
             }
         }
 
@@ -156,13 +157,15 @@
             }, 3000);
         }
 
-        // Allow sending with Enter key (if preferred, strictly text input might not want this)
         inputField.addEventListener('keypress', function(e) {
             if(e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 processMessage();
             }
         });
+        
+        // Security clean up: Remove access if they are back at this page
+        sessionStorage.removeItem('accessGranted');
     </script>
 </body>
 </html>
