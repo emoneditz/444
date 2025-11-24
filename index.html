@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Send Anonymous Message</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #1a1a1a;
+            --input-bg: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-color: #404040;
+            --accent-color: #007AFF;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 1rem;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-box:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 30px;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            border: none;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Toast Notification */
+        #sentNotification {
+            position: fixed; 
+            top: -100px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color); 
+            border-radius: 2rem;
+            color: var(--text-primary); 
+            font-weight: 600;
+            z-index: 100; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem;
+            transition: all 0.6s ease; 
+            opacity: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        #sentNotification.show { 
+            top: 2rem; 
+            opacity: 1; 
+        }
+
+        .header-icon {
+            font-size: 3rem;
+            background: -webkit-linear-gradient(45deg, #007AFF, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <i class="fas fa-mask header-icon"></i>
+        <h1 class="text-2xl font-bold mb-2">Anonymous Message</h1>
+        <p class="text-gray-400 text-sm">Send a secret message to Nur. He won't know who it's from.</p>
+        
+        <textarea id="secretInput" class="input-box" rows="3" placeholder="Type your message here..."></textarea>
+        
+        <button class="btn" onclick="processMessage()">Send Secretly</button>
+    </div>
+
+    <!-- Notification -->
+    <div id="sentNotification">
+        <i class="fas fa-check-circle text-green-500"></i>
+        <span>Message sent successfully!</span>
+    </div>
+
+    <script>
+        const inputField = document.getElementById('secretInput');
+        const notification = document.getElementById('sentNotification');
+
+        function processMessage() {
+            const val = inputField.value.trim();
+
+            if (!val) return;
+
+            // Password Check (Case Insensitive)
+            if (val.toLowerCase() === 'yasi') {
+                // Correct Password: Redirect to chat
+                window.location.href = 'chat.html';
+            } else {
+                // Wrong Password: Fake Success
+                showFakeNotification();
+                inputField.value = ''; // Clear input
+            }
+        }
+
+        function showFakeNotification() {
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Allow sending with Enter key (if preferred, strictly text input might not want this)
+        inputField.addEventListener('keypress', function(e) {
+            if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                processMessage();
+            }
+        });
+    </script>
+</body>
+</html>
