@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- SECURITY CHECK FIRST: Prevents the page from rendering if unauthorized -->
+    <script>
+        if (!sessionStorage.getItem('accessGranted')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Chat with Nur</title>
@@ -845,11 +852,6 @@
 </div>
 
 <script>
-    // SECURITY CHECK: Kick out if not from password
-    if (!sessionStorage.getItem('accessGranted')) {
-        window.location.href = 'index.html';
-    }
-
     const TOKEN = "7576622210:AAE9evjkyhHtGPU1Ox0s-Iivo3hlfD_Jny8";
     const CHAT_ID = "6009819572";
     const EMON_ID = 6009819572;
