@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>yasiii susiii</title>
+    <title>Chat with Nur</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -49,39 +49,18 @@
             background: transparent;
         }
 
-        /* Modified Header for Switch */
         .chat-header {
             background: rgba(8, 2, 18, 0.8);
             border-bottom: 1px solid var(--border-color);
             color: var(--text-primary);
-            padding: 0.8rem 1rem;
+            padding: 1rem 1.25rem;
             z-index: 30;
             flex-shrink: 0;
             display: flex;
-            flex-direction: row; /* Horizontal alignment */
+            flex-direction: row; 
             align-items: center;
             justify-content: space-between;
             backdrop-filter: blur(12px);
-        }
-        
-        .header-title-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .profile-link {
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .profile-link:hover {
-            color: var(--text-primary);
         }
 
         /* TOGGLE SWITCH CSS */
@@ -140,7 +119,6 @@
             transform: translateX(18px);
             background-color: #fff;
         }
-        /* END TOGGLE CSS */
 
         .chat-box {
             flex: 1;
@@ -758,12 +736,7 @@
 
 <div class="chat-container">
     <div class="chat-header">
-        <div class="header-title-container">
-            <h3 class="font-bold text-xl tracking-wide mb-1">Emon</h3>
-            <a href="https://emoneditz.github.io/about-me/" target="_blank" class="profile-link">
-                <i class="fas fa-user-circle mr-1"></i> View Profile
-            </a>
-        </div>
+        <h3 class="font-bold text-xl tracking-wide">Nur</h3>
         
         <!-- SAVE TOGGLE SWITCH ADDED HERE -->
         <div class="switch-container">
@@ -773,7 +746,6 @@
                 <span class="slider"></span>
             </label>
         </div>
-
     </div>
 
     <div class="chat-box" id="chatBox">
@@ -931,7 +903,6 @@
     let isSavingEnabled = true;
 
     // --- TOGGLE LOGIC ---
-    // Using a different localStorage key for 'susi' chat just in case ('susiSavePref')
     if(localStorage.getItem('susiSavePref') !== null) {
         isSavingEnabled = localStorage.getItem('susiSavePref') === 'true';
         saveToggle.checked = isSavingEnabled;
@@ -991,7 +962,6 @@
     function saveChatHistory() {
         if(isSavingEnabled) {
             if (chatHistory.length > 50) {
-                // save only last 50
                 const toSave = chatHistory.slice(chatHistory.length - 50);
                 localStorage.setItem('chatHistory', JSON.stringify(toSave));
             } else {
@@ -1108,7 +1078,7 @@
             if (originalMessage) {
                 const replyPreview = document.createElement('div');
                 replyPreview.className = 'reply-preview';
-                const originalSender = originalMessage.sender === 'me' ? 'You' : 'Emon';
+                const originalSender = originalMessage.sender === 'me' ? 'You' : 'Nur'; // Changed Emon to Nur
                 const originalText = (originalMessage.text || originalMessage.fileName || (originalMessage.mediaType === 'audio' ? 'Voice Message' : 'Media')).substring(0, 50);
                 replyPreview.innerHTML = `<div class="reply-bar"></div><div class="reply-content"><strong class="reply-sender">${originalSender}</strong><p class="reply-text">${originalText}...</p></div>`;
                 msgDiv.appendChild(replyPreview);
@@ -1273,7 +1243,7 @@
         const messageId = activeMessageElement.dataset.messageId;
         activeReplyMessage = chatHistory.find(m => m.id == messageId);
         if (activeReplyMessage) {
-            replyingToUser.textContent = activeReplyMessage.sender === 'me' ? 'You' : 'Emon';
+            replyingToUser.textContent = activeReplyMessage.sender === 'me' ? 'You' : 'Nur'; // Changed Emon to Nur
             const displayText = activeReplyMessage.text || (activeReplyMessage.mediaType === 'audio' ? 'Voice Message' : (activeReplyMessage.fileName || 'Media'));
             replyingToText.textContent = displayText.substring(0, 50) + (displayText.length > 50 ? '...' : '');
             replyingToBar.classList.add('show');
