@@ -70,6 +70,20 @@
             align-items: flex-start;
         }
 
+        .profile-link {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .profile-link:hover {
+            color: var(--text-primary);
+        }
+
         /* TOGGLE SWITCH CSS */
         .switch-container {
             display: flex;
@@ -745,7 +759,10 @@
 <div class="chat-container">
     <div class="chat-header">
         <div class="header-title-container">
-            <h3 class="font-bold text-xl tracking-wide mb-1">Nur</h3
+            <h3 class="font-bold text-xl tracking-wide mb-1">Emon</h3>
+            <a href="https://emoneditz.github.io/about-me/" target="_blank" class="profile-link">
+                <i class="fas fa-user-circle mr-1"></i> View Profile
+            </a>
         </div>
         
         <!-- SAVE TOGGLE SWITCH ADDED HERE -->
