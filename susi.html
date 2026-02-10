@@ -1,3 +1,9 @@
+    <!-- SECURITY CHECK FIRST: Prevents the page from rendering if unauthorized -->
+    <script>
+        if (!sessionStorage.getItem('accessGranted')) {
+            window.location.href = 'index.html';
+        }
+    </script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -126,7 +132,11 @@
             padding-bottom: calc(1rem + 6rem + env(safe-area-inset-bottom, 0));
             overflow-y: auto;
             scroll-behavior: smooth;
-            background: linear-gradient(180deg, rgba(21, 7, 37, 0.8), rgba(5, 1, 10, 0.95));
+            background: url('https://raw.githubusercontent.com/emoneditz/444/main/1770692499946-019c457e-8ada-7d40-9120-c17cfe254679.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
 
         .message {
@@ -159,6 +169,7 @@
             margin-right: auto;
             border-bottom-left-radius: 0.5rem;
             border: 1px solid rgba(168, 85, 247, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         }
 
         .message:hover {
