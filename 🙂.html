@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Text Mosaic Portrait</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Canvas always full screen */
+    #canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    /* Footer watermark */
+    #watermark {
+      position: fixed;
+      bottom: 10px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 11px;
+      font-family: sans-serif;
+      color: rgba(255,255,255,0.28);
+      letter-spacing: 0.5px;
+      z-index: 30;
+      pointer-events: none;
+    }
+
+    /* Loading overlay */
+    #loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      z-index: 100;
+      gap: 16px;
+      transition: opacity 0.5s ease;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #ff6ec7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader p {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading screen -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>Loading…</p>
+  </div>
+
+  <!-- Main canvas -->
+  <canvas id="canvas"></canvas>
+
+  <!-- Footer -->
+  <div id="watermark">© 2026 Emon. All rights reserved.</div>
+
+<script>
+/* ══════════════════════════════════════
+   SETTINGS — change these easily
+══════════════════════════════════════ */
+const TEXT_WORD = "I love you "; // text used in mosaic
+const IMAGE_URL = "https://raw.githubusercontent.com/emoneditz/444/main/IMG_20260211_181158_973.jpg";
+const CELL_PX   = 16;   // mosaic cell size in image pixels (bigger = fewer chars)
+const SCALE_MIN = 1.0;  // minimum zoom (never goes below 1)
+const SCALE_MAX = 12.0; // maximum zoom
+
+/* ══════════════════════════════════════
+   BLEND: how text fades in based on zoom
+   At scale 1.0 → 0% text (pure photo)
+   At scale 3.0+ → 100% text (full mosaic)
+══════════════════════════════════════ */
+const BLEND_ZOOM_START = 1.2; // zoom level where text starts appearing
+const BLEND_ZOOM_FULL  = 3.5; // zoom level where text is fully shown
+const BLEND_SPEED      = 0.1; // animation lerp speed
+
+/* ══════════════════════════════════════
+   DOM
+══════════════════════════════════════ */
+const canvas    = document.getElementById("canvas");
+const ctx       = canvas.getContext("2d");
+const loader    = document.getElementById("loader");
+
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let img  = null;
+let imgW = 0;
+let imgH = 0;
+
+/* Zoom & pan — these NEVER reset unless user double-taps */
+let scale = 1.0;
+let panX  = 0;
+let panY  = 0;
+
+/* Blend value: 0 = photo only, 1 = text only */
+let blendTarget = 0;
+let blendNow    = 0;
+
+/* Mosaic data */
+let mosaicColors = [];
+let mosaicCols   = 0;
+let mosaicRows   = 0;
+let mosaicReady  = false;
+
+let dirty = true;
+
+/* ══════════════════════════════════════
+   CANVAS RESIZE
+══════════════════════════════════════ */
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  dirty = true;
+}
+
+/* ══════════════════════════════════════
+   FIT RECT
+   Calculates where the image is drawn
+   at scale=1, centered, aspect-preserved
+══════════════════════════════════════ */
+function getFitRect() {
+  const cw    = canvas.width;
+  const ch    = canvas.height;
+  /* cover: fill entire screen */
+  const ratio = Math.max(cw / imgW, ch / imgH);
+  const drawW = imgW * ratio;
+  const drawH = imgH * ratio;
+  return {
+    drawX : (cw - drawW) / 2,
+    drawY : (ch - drawH) / 2,
+    drawW, drawH, ratio
+  };
+}
+
+/* ══════════════════════════════════════
+   BUILD MOSAIC
+   Runs once after image loads.
+   Pre-computes average color per cell.
+══════════════════════════════════════ */
+function buildMosaicData() {
+  const off    = document.createElement("canvas");
+  off.width    = imgW;
+  off.height   = imgH;
+  const offCtx = off.getContext("2d");
+  offCtx.drawImage(img, 0, 0, imgW, imgH);
+  const px = offCtx.getImageData(0, 0, imgW, imgH).data;
+
+  mosaicCols   = Math.ceil(imgW / CELL_PX);
+  mosaicRows   = Math.ceil(imgH / CELL_PX);
+  mosaicColors = new Array(mosaicRows * mosaicCols);
+
+  for (let row = 0; row < mosaicRows; row++) {
+    for (let col = 0; col < mosaicCols; col++) {
+      let r = 0, g = 0, b = 0, n = 0;
+      const x0 = col * CELL_PX, y0 = row * CELL_PX;
+      const x1 = Math.min(x0 + CELL_PX, imgW);
+      const y1 = Math.min(y0 + CELL_PX, imgH);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * imgW + x) * 4;
+          r += px[i]; g += px[i+1]; b += px[i+2]; n++;
+        }
+      }
+      mosaicColors[row * mosaicCols + col] = {
+        r: r / n | 0,
+        g: g / n | 0,
+        b: b / n | 0
+      };
+    }
+  }
+  mosaicReady = true;
+}
+
+/* ══════════════════════════════════════
+   CLAMP PAN
+   Image edges cannot go past screen edges
+══════════════════════════════════════ */
+function clampPan() {
+  if (!img) return;
+  const { drawW, drawH } = getFitRect();
+  const cw = canvas.width, ch = canvas.height;
+  const maxX = Math.max(0, (drawW * scale - cw) / 2);
+  const maxY = Math.max(0, (drawH * scale - ch) / 2);
+  panX = Math.max(-maxX, Math.min(maxX, panX));
+  panY = Math.max(-maxY, Math.min(maxY, panY));
+}
+
+/* ══════════════════════════════════════
+   RENDER LOOP
+══════════════════════════════════════ */
+function render() {
+  requestAnimationFrame(render);
+  if (!img) return;
+
+  /* Auto-blend from zoom level */
+  const t = (scale - BLEND_ZOOM_START) / (BLEND_ZOOM_FULL - BLEND_ZOOM_START);
+  blendTarget = Math.max(0, Math.min(1, t));
+
+  /* Smooth animate blend */
+  const prevBlend = blendNow;
+  blendNow += (blendTarget - blendNow) * BLEND_SPEED;
+
+  /* Only redraw if something changed */
+  const changed = Math.abs(blendNow - prevBlend) > 0.0005;
+  if (!dirty && !changed) return;
+  dirty = false;
+
+  const cw  = canvas.width;
+  const ch  = canvas.height;
+  const cx  = cw / 2;
+  const cy  = ch / 2;
+  const fit = getFitRect();
+
+  /* Clear background */
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, cw, ch);
+
+  /* Apply zoom + pan */
+  ctx.save();
+  ctx.translate(cx + panX, cy + panY);
+  ctx.scale(scale, scale);
+  ctx.translate(-cx, -cy);
+
+  /* Layer 1: Photo */
+  ctx.globalAlpha = 1;
+  ctx.drawImage(img, fit.drawX, fit.drawY, fit.drawW, fit.drawH);
+
+  /* Layer 2: Text mosaic fades over photo */
+  if (mosaicReady && blendNow > 0.005) {
+    /* Dark overlay to make text readable -- INTENSITY INCREASED */
+    ctx.globalAlpha = Math.min(1, blendNow * 1.25); 
+    ctx.fillStyle   = "rgba(0,0,0,0.95)"; 
+    ctx.fillRect(fit.drawX, fit.drawY, fit.drawW, fit.drawH);
+
+    /* Draw text characters colored by pixel */
+    const cellSize = CELL_PX * fit.ratio;
+    const fontSize = Math.max(6, cellSize * 0.92);
+    ctx.font         = `bold ${fontSize}px monospace`;
+    ctx.textBaseline = "top";
+    
+    /* Text Opacity -- INTENSITY INCREASED */
+    ctx.globalAlpha  = Math.min(1, blendNow * 1.5);
+
+    let ci = 0;
+    for (let row = 0; row < mosaicRows; row++) {
+      for (let col = 0; col < mosaicCols; col++) {
+        const c = mosaicColors[row * mosaicCols + col];
+        ctx.fillStyle = `rgb(${c.r},${c.g},${c.b})`;
+        ctx.fillText(
+          TEXT_WORD[ci % TEXT_WORD.length],
+          fit.drawX + col * cellSize,
+          fit.drawY + row * cellSize
+        );
+        ci++;
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════
+   TOUCH / POINTER EVENTS
+   
+   KEY RULES to prevent zoom-snap bug:
+   • Use PointerEvents only (not touch)
+   • scale and pan ONLY change in pointermove
+   • pointerup ONLY removes pointer from map
+   • setPointerCapture keeps events flowing
+     even when finger moves fast off canvas
+══════════════════════════════════════ */
+const ptrs = new Map(); // active pointers: id → {x, y}
+let prevDist = 0;
+let prevMidX = 0;
+let prevMidY = 0;
+
+/* Get pinch distance and midpoint from 2 active pointers */
+function getPinch() {
+  const [a, b] = [...ptrs.values()];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  return {
+    dist : Math.hypot(dx, dy),
+    midX : (a.x + b.x) / 2,
+    midY : (a.y + b.y) / 2
+  };
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId); // capture so we don't lose fast moves
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (ptrs.size === 2) {
+    /* Second finger down — start pinch tracking */
+    const p = getPinch();
+    prevDist = p.dist;
+    prevMidX = p.midX;
+    prevMidY = p.midY;
+  }
+}, { passive: false });
+
+canvas.addEventListener("pointermove", (e) => {
+  e.preventDefault();
+  if (!ptrs.has(e.pointerId)) return;
+
+  const old = ptrs.get(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (ptrs.size === 2) {
+    /* ── PINCH ZOOM ── */
+    const p      = getPinch();
+    const factor = p.dist / prevDist; // how much to zoom this frame
+    const cx     = canvas.width  / 2;
+    const cy     = canvas.height / 2;
+
+    /* Move pan with midpoint delta */
+    const dx = p.midX - prevMidX;
+    const dy = p.midY - prevMidY;
+
+    /* Zoom toward pinch midpoint */
+    panX = (panX + (p.midX - cx)) * factor - (p.midX - cx) + dx;
+    panY = (panY + (p.midY - cy)) * factor - (p.midY - cy) + dy;
+
+    /* Apply new scale, hard-clamp it */
+    scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale * factor));
+
+    /* If zoomed fully out, snap pan to zero */
+    if (scale <= SCALE_MIN) {
+      scale = SCALE_MIN;
+      panX  = 0;
+      panY  = 0;
+    }
+
+    prevDist = p.dist;
+    prevMidX = p.midX;
+    prevMidY = p.midY;
+
+  } else if (ptrs.size === 1) {
+    /* ── SINGLE FINGER PAN ── */
+    panX += e.clientX - old.x;
+    panY += e.clientY - old.y;
+  }
+
+  clampPan();
+  dirty = true;
+}, { passive: false });
+
+canvas.addEventListener("pointerup", (e) => {
+  e.preventDefault();
+  ptrs.delete(e.pointerId);
+
+  /* If one finger remains, update the midpoint seed
+     so the next move doesn't produce a huge delta */
+  if (ptrs.size === 1) {
+    const [pt] = ptrs.values();
+    prevMidX = pt.x;
+    prevMidY = pt.y;
+  }
+  /* IMPORTANT: do NOT touch scale or pan here */
+}, { passive: false });
+
+canvas.addEventListener("pointercancel", (e) => {
+  ptrs.delete(e.pointerId);
+}, { passive: false });
+
+/* Double-tap resets zoom to 1 */
+let lastTapTime = 0;
+canvas.addEventListener("pointerup", (e) => {
+  if (ptrs.size !== 0) return; // wait until all fingers lifted
+  const now = Date.now();
+  if (now - lastTapTime < 300) {
+    scale = 1; panX = 0; panY = 0;
+    dirty = true;
+  }
+  lastTapTime = now;
+});
+
+/* ══════════════════════════════════════
+   IMAGE LOAD
+══════════════════════════════════════ */
+function loadImage() {
+  const image      = new Image();
+  image.crossOrigin = "anonymous";
+
+  image.onload = () => {
+    img  = image;
+    imgW = image.naturalWidth;
+    imgH = image.naturalHeight;
+    buildMosaicData();
+    loader.classList.add("hidden");
+    setTimeout(() => { loader.style.display = "none"; }, 600);
+    dirty = true;
+  };
+
+  image.onerror = () => {
+    loader.querySelector("p").textContent = "⚠️ Could not load image.";
+  };
+
+  image.src = IMAGE_URL;
+}
+
+/* ══════════════════════════════════════
+   INIT
+══════════════════════════════════════ */
+function init() {
+  resizeCanvas();
+  window.addEventListener("resize", () => { resizeCanvas(); clampPan(); });
+  requestAnimationFrame(render);
+  loadImage();
+}
+
+init();
+</script>
+</body>
+</html>
