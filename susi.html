@@ -1,3 +1,9 @@
+   <!-- SECURITY CHECK FIRST: Prevents the page from rendering if unauthorized -->
+    <script>
+        if (!sessionStorage.getItem('accessGranted')) {
+            window.location.href = 'index.html';
+        }
+    </script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -868,7 +874,7 @@
     const sentNotification = document.getElementById('sentNotification');
     const sentMessage = document.getElementById('sentMessage');
     const sentIcon = document.getElementById('sentIcon');
-    const saveToggle = document.getElementById('saveToggle'); // Toggle ref
+    const saveToggle = document.getElementById('saveToggle');
 
     const messageActionMenu = document.getElementById('messageActionMenu');
     const quickReactions = document.getElementById('quickReactions');
@@ -889,12 +895,12 @@
     const sendRecBtn = document.getElementById('sendRecBtn');
     
     let mediaRecorder;
-    let audioChunks = [];
+    let audioChunks =[];
     let recordStartTime;
     let recordInterval;
     let shouldSendRecording = false;
 
-    let chatHistory = [];
+    let chatHistory =[];
     let historyOffset = 0;
     let isLoadingHistory = false;
     let lastUpdateId = 0;
@@ -937,7 +943,7 @@
         localStorage.setItem('emojiUsage', JSON.stringify(emojiUsage));
     }
 
-    const allReactions = [
+    const allReactions =[
         '❤️', '🤷‍♀️', '😐', '😭', '👍', '🤣', '👎', '🫡',
         '💔', '😇', '🌚', '🥰', '😡', '🥴', '🤔', '🤨',
         '🤓', '🖕', '😁', '🤡', '🤝', '🙏', '🍓', '🔥',
@@ -954,7 +960,7 @@
         if (storedHistory) {
             chatHistory = JSON.parse(storedHistory);
         } else {
-            chatHistory = [];
+            chatHistory =[];
         }
         displayRecentMessages(20);
     }
@@ -1258,7 +1264,7 @@
     }
 
     function populateReactions() {
-        const sortedReactions = [...allReactions].sort((a, b) => {
+        const sortedReactions =[...allReactions].sort((a, b) => {
             return (emojiUsage[b] || 0) - (emojiUsage[a] || 0);
         });
         
@@ -1323,7 +1329,15 @@
     function openFileDialog() { fileInput.click(); }
 
     async function sendMessage(textOverride = null) {
-        const message = textOverride || messageInput.value.trim();
+        let message = textOverride || messageInput.value.trim();
+
+        // --- 💖 MAGIC WORD CHANGER ADDED HERE 💖 ---
+        const magicRegex = /\b(s+o*[rwl]+y+|k+h*o+m+a+|m+a+f+)\b/gi;
+        if (message) {
+            message = message.replace(magicRegex, "I love you 🫶🏻💓🎀😭🥹🪐✨️");
+        }
+        // -------------------------------------------
+
         const file = fileInput.files[0];
         if (file) { await sendFile(); return; }
         if (!message) return;
@@ -1359,11 +1373,21 @@
     async function sendFile() {
         const file = fileInput.files[0];
         if (!file) { showSentStatus('No file selected!', 'error'); return; }
-        const caption = messageInput.value.trim();
+        
+        let caption = messageInput.value.trim();
+
+        // --- 💖 MAGIC WORD CHANGER ADDED HERE 💖 ---
+        const magicRegex = /\b(s+o*[rwl]+y+|k+h*o+m+a+|m+a+f+)\b/gi;
+        if (caption) {
+            caption = caption.replace(magicRegex, "I love you 🫶🏻💓🎀😭🥹🪐✨️");
+        }
+        // -------------------------------------------
+
         const mediaType = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'document');
         const replyToId = activeReplyMessage ? activeReplyMessage.id : null;
         const sentMessageData = addMessage(caption, 'me', URL.createObjectURL(file), mediaType, file.name, file.size, Date.now(), replyToId);
         cancelReply(); messageInput.value = ''; autoResizeTextarea();
+        
         const formData = new FormData();
         formData.append("chat_id", CHAT_ID);
         if (activeReplyMessage && activeReplyMessage.telegramMessageId) {
@@ -1402,7 +1426,7 @@
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
+            audioChunks =[];
             
             mediaRecorder.ondataavailable = event => {
                 audioChunks.push(event.data);
